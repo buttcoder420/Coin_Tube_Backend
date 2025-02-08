@@ -151,13 +151,13 @@ const registerController = async (req, res) => {
 
     // Generate referral code and link
     const newReferralCode = crypto.randomBytes(4).toString("hex").toUpperCase();
-    const referralLink = `https://localhost:8080/login?referralCode=${newReferralCode}`;
+    const referralLink = `https://https://coin-tube-backend-el9n.onrender.com/login?referralCode=${newReferralCode}`;
 
     // Generate verification token
     const verificationToken = crypto.randomBytes(20).toString("hex");
 
     // Register new user
-    const userRegister = new UserModel({
+    const userRegister = new UserRegisterModel({
       name,
       email,
       phone,
