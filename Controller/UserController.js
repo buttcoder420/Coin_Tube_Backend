@@ -4,8 +4,8 @@ require("dotenv").config();
 const nodemailer = require("nodemailer");
 // JWT Middleware
 var { expressjwt: jwt } = require("express-jwt");
-const UserModel = require("../models/UserModel");
 const { ComparePassword, HashPassword } = require("../Helper/UserHelper");
+const UserRegisterModel = require("../Models/UserRegisterModel");
 
 const requireSign = [
   jwt({
@@ -77,7 +77,7 @@ const loginController = async (req, res) => {
     }
 
     // Find user
-    const user = await UserModel.findOne({ email });
+    const user = await UserRegisterModel.findOne({ email });
     if (!user) {
       return res.status(404).send({
         success: false,
@@ -138,7 +138,7 @@ const registerController = async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = await UserModel.findOne({ email });
+    const existingUser = await UserRegisterModel.findOne({ email });
     if (existingUser) {
       return res.status(409).send({
         success: false,
