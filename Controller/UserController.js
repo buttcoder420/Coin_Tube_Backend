@@ -1,11 +1,11 @@
-const UserModel = require("../models/UserModel");
-const { HashPassword, ComparePassword } = require("../Helper/UserHelper");
 const JWT = require("jsonwebtoken");
 const crypto = require("crypto");
 require("dotenv").config();
 const nodemailer = require("nodemailer");
 // JWT Middleware
 var { expressjwt: jwt } = require("express-jwt");
+const UserModel = require("../models/UserModel");
+const { ComparePassword, HashPassword } = require("../Helper/UserHelper");
 
 const requireSign = [
   jwt({
