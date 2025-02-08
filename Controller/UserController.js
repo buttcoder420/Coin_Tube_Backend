@@ -19,29 +19,6 @@ const requireSign = [
     next();
   },
 ];
-// Nodemailer transporter setup
-const transporter = nodemailer.createTransport({
-  service: "Gmail",
-  auth: {
-    user: process.env.EMAIL_USER, // Your Gmail
-    pass: process.env.EMAIL_PASS, // Your Gmail App Password
-  },
-});
-
-// Function to send verification email
-const sendVerificationEmail = async (email, token) => {
-  const verificationUrl = `https://coin-tube-backend-el9n.onrender.com/verify-email?token=${token}`;
-
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Verify Your Email",
-    html: `<p>Click the link below to verify your email:</p>
-           <a href="${verificationUrl}">Verify Email</a>`,
-  };
-
-  await transporter.sendMail(mailOptions);
-};
 
 // Function to generate a unique referral code
 const generateReferralCode = async () => {
@@ -198,41 +175,8 @@ const registerController = async (req, res) => {
   }
 };
 
-const verifyEmailController = async (req, res) => {
-  try {
-    const { token } = req.query;
-
-    // Find user by token
-    const user = await UserRegisterModel.findOne({ verificationToken: token });
-    if (!user) {
-      return res.status(400).send({
-        success: false,
-        message: "Invalid or expired verification token",
-      });
-    }
-
-    // Verify user and remove token
-    user.isVerified = true;
-    user.verificationToken = undefined;
-    await user.save();
-
-    res.status(200).send({
-      success: true,
-      message: "Email verified successfully. You can now log in.",
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send({
-      success: false,
-      message: "Error verifying email",
-      error,
-    });
-  }
-};
-
 module.exports = {
   requireSign,
   loginController,
   registerController,
-  verifyEmailController,
 };
