@@ -19,7 +19,30 @@ const requireSign = [
     next();
   },
 ];
+// Nodemailer transporter setup
+/*const transporter = nodemailer.createTransport({
+  service: "Gmail",
+  auth: {
+    user: process.env.EMAIL_USER, // Your Gmail
+    pass: process.env.EMAIL_PASS, // Your Gmail App Password
+  },
+});
 
+// Function to send verification email
+const sendVerificationEmail = async (email, token) => {
+  const verificationUrl = `https://coin-tube-backend-el9n.onrender.com/verify-email?token=${token}`;
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "Verify Your Email",
+    html: `<p>Click the link below to verify your email:</p>
+           <a href="${verificationUrl}">Verify Email</a>`,
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+*/
 // Function to generate a unique referral code
 const generateReferralCode = async () => {
   let isUnique = false;
@@ -37,7 +60,8 @@ const generateReferralCode = async () => {
 // Generate referral link dynamically
 const generateReferralLink = (referralCode) => {
   const baseUrl =
-    process.env.BASE_URL || "https://coin-tube-backend-el9n.onrender.com";
+    process.env.BASE_URL ||
+    "https://coin-tube-backend-el9n.onrender.com/api/v1";
   return `${baseUrl}/register?ref=${referralCode}`;
 };
 
@@ -64,12 +88,12 @@ const loginController = async (req, res) => {
     }
 
     // Check if email is verified
-    if (!user.isVerified) {
+    /*if (!user.isVerified) {
       return res.status(403).send({
         success: false,
         message: "Please verify your email before logging in.",
       });
-    }
+    }*/
 
     // Check password
     const match = await ComparePassword(password, user.password);
@@ -132,7 +156,7 @@ const registerController = async (req, res) => {
     const referralLink = `https://coin-tube-backend-el9n.onrender.com/login?referralCode=${newReferralCode}`;
 
     // Generate verification token
-    const verificationToken = crypto.randomBytes(20).toString("hex");
+    //const verificationToken = crypto.randomBytes(20).toString("hex");
 
     // Register new user
     const userRegister = new UserRegisterModel({
@@ -142,7 +166,7 @@ const registerController = async (req, res) => {
       password: hashedPassword,
       referralCode: newReferralCode,
       referralLink,
-      verificationToken,
+      //verificationToken,
     });
 
     // Handle referral logic
@@ -159,11 +183,11 @@ const registerController = async (req, res) => {
     await userRegister.save();
 
     // Send verification email
-    await sendVerificationEmail(email, verificationToken);
+    //await sendVerificationEmail(email, verificationToken);
 
     res.status(201).send({
       success: true,
-      message: "User registered successfully. Please verify your email.",
+      message: "User registered successfully. Please login.",
     });
   } catch (error) {
     console.error(error);
@@ -175,8 +199,41 @@ const registerController = async (req, res) => {
   }
 };
 
+/*const verifyEmailController = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    // Find user by token
+    const user = await UserRegisterModel.findOne({ verificationToken: token });
+    if (!user) {
+      return res.status(400).send({
+        success: false,
+        message: "Invalid or expired verification token",
+      });
+    }
+
+    // Verify user and remove token
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    await user.save();
+
+    res.status(200).send({
+      success: true,
+      message: "Email verified successfully. You can now log in.",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({
+      success: false,
+      message: "Error verifying email",
+      error,
+    });
+  }
+};*/
+
 module.exports = {
   requireSign,
   loginController,
   registerController,
+  //verifyEmailController,
 };
