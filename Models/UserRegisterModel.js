@@ -10,10 +10,6 @@ const userSchema = new mongoose.Schema(
     referralCode: { type: String, unique: true, default: null },
     referralLink: { type: String, unique: true, default: null },
     referredBy: { type: String, default: null },
-
-    // Email verification fields
-    isVerified: { type: Boolean, default: false }, // By default false
-    verificationToken: { type: String }, // Store token for verification
   },
   { timestamps: true }
 );
