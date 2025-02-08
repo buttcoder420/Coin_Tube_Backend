@@ -30,7 +30,7 @@ const transporter = nodemailer.createTransport({
 
 // Function to send verification email
 const sendVerificationEmail = async (email, token) => {
-  const verificationUrl = `https://192.168.0.105:8080/verify-email?token=${token}`;
+  const verificationUrl = `https://coin-tube-backend-el9n.onrender.com/verify-email?token=${token}`;
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -59,7 +59,8 @@ const generateReferralCode = async () => {
 
 // Generate referral link dynamically
 const generateReferralLink = (referralCode) => {
-  const baseUrl = process.env.BASE_URL || "http://localhost:8080";
+  const baseUrl =
+    process.env.BASE_URL || "https://coin-tube-backend-el9n.onrender.com";
   return `${baseUrl}/register?ref=${referralCode}`;
 };
 
@@ -151,7 +152,7 @@ const registerController = async (req, res) => {
 
     // Generate referral code and link
     const newReferralCode = crypto.randomBytes(4).toString("hex").toUpperCase();
-    const referralLink = `https://https://coin-tube-backend-el9n.onrender.com/login?referralCode=${newReferralCode}`;
+    const referralLink = `https://coin-tube-backend-el9n.onrender.com/login?referralCode=${newReferralCode}`;
 
     // Generate verification token
     const verificationToken = crypto.randomBytes(20).toString("hex");
@@ -202,7 +203,7 @@ const verifyEmailController = async (req, res) => {
     const { token } = req.query;
 
     // Find user by token
-    const user = await UserModel.findOne({ verificationToken: token });
+    const user = await UserRegisterModel.findOne({ verificationToken: token });
     if (!user) {
       return res.status(400).send({
         success: false,
