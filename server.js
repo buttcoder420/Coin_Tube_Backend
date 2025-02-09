@@ -17,6 +17,7 @@ app.use(morgan("dev"));
 
 //api
 app.use("/api/v1/users", require("./Routes/UserRoute"));
+app.use("/api/v1/reward", require("./Routes/DailyRewardRoute"));
 
 app.get("/", (req, res) => {
   res.send("Welcome to web");
