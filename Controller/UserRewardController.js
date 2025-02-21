@@ -105,41 +105,44 @@ const getCurrentReward = async (req, res) => {
   try {
     const userId = req.auth._id;
 
-    // Find user's last claimed reward
-    const lastClaim = await DailyRewardModel.findOne({ userId }).sort({
-      claimedAt: -1,
-    });
+    // User ka last claimed reward find karo (latest entry)
+    const lastClaim = await UserDailyRewardModel.findOne({ userId })
+      .sort({ claimedAt: -1 })
+      .populate("rewardId"); // Jo reward claim hua tha, uski details bhi lao
 
-    let currentDay = 1; // Default to day 1
+    let nextReward = null;
 
     if (lastClaim) {
       const currentDate = new Date();
       const lastClaimDate = new Date(lastClaim.claimedAt);
-      const diffInDays = Math.floor(
-        (currentDate - lastClaimDate) / (1000 * 3600 * 24)
-      );
 
-      if (diffInDays === 0) {
-        // Agar aaj ka claim already ho chuka hai, to last claim ka reward return karo
-        currentDay = lastClaim.day;
-      } else if (diffInDays >= 1) {
-        // Agar aglay din aya hai, to next reward dikhao
-        currentDay = lastClaim.day + 1;
-        if (currentDay > 7) currentDay = 1; // Reset to day 1 after day 7
+      // **Check karo ke last claim aur aaj ke beech 24 ghantay ka farq hai ya nahi**
+      const diffInHours = (currentDate - lastClaimDate) / (1000 * 3600);
+
+      if (diffInHours >= 24) {
+        // **Agar 24 hours guzar chuke hain, to next reward dhoondho**
+        nextReward = await DailyRewardModel.findOne({
+          _id: { $gt: lastClaim.rewardId }, // Next reward jo last claim ke baad ho
+        }).sort({ _id: 1 });
+
+        // **Agar koi next reward nahi mila, to cycle restart karo (Day 1 ka reward lo)**
+        if (!nextReward) {
+          nextReward = await DailyRewardModel.findOne().sort({ _id: 1 });
+        }
+      } else {
+        // **Agar 24 ghantay nahi huay, to last claimed reward hi dikhao**
+        nextReward = lastClaim.rewardId;
       }
-    }
-
-    // Find the reward for the current day
-    let reward = await DailyRewardModel.findOne({ day: currentDay.toString() });
-
-    if (!reward) {
-      reward = await DailyRewardModel.findOne().sort({ day: 1 });
+    } else {
+      // **Agar user ka koi bhi claim nahi mila, to Day 1 ka reward do**
+      nextReward = await DailyRewardModel.findOne().sort({ _id: 1 });
     }
 
     res.json({
-      message: `Today's reward is for Day ${currentDay}.`,
-      currentRewardDay: currentDay,
-      reward: reward ? { coins: reward.prize, amount: reward.amount } : null,
+      message: `Your next reward is ready.`,
+      reward: nextReward
+        ? { prize: nextReward.prize, amount: nextReward.amount }
+        : null,
     });
   } catch (error) {
     console.error(error);
