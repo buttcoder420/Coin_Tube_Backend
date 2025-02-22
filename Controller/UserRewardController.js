@@ -141,7 +141,11 @@ const getCurrentReward = async (req, res) => {
     res.json({
       message: `Your next reward is ready.`,
       reward: nextReward
-        ? { prize: nextReward.prize, amount: nextReward.amount }
+        ? {
+            prize: nextReward.prize,
+            amount: nextReward.amount,
+            day: nextReward.day,
+          }
         : null,
     });
   } catch (error) {
