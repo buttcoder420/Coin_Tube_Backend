@@ -129,7 +129,6 @@ const getCurrentReward = async (req, res) => {
 
     let nextReward = null;
     let nextClaimAt = null;
-    let nextDay = 1;
 
     if (lastClaim) {
       const currentDate = new Date();
@@ -137,16 +136,23 @@ const getCurrentReward = async (req, res) => {
       const diffInHours = (currentDate - lastClaimDate) / (1000 * 3600);
 
       if (diffInHours >= 24) {
-        nextDay = lastClaim.rewardId.day + 1;
-        if (nextDay > 7) nextDay = 1;
-        nextReward = await DailyRewardModel.findOne({ day: nextDay });
+        // Find the next reward based on ID instead of day
+        nextReward = await DailyRewardModel.findOne({
+          _id: { $gt: lastClaim.rewardId._id },
+        }).sort({ _id: 1 });
+
+        // If no next reward found, restart from the first reward
+        if (!nextReward) {
+          nextReward = await DailyRewardModel.findOne().sort({ _id: 1 });
+        }
       } else {
         nextReward = lastClaim.rewardId;
         nextClaimAt = new Date(lastClaim.claimedAt);
         nextClaimAt.setHours(nextClaimAt.getHours() + 24);
       }
     } else {
-      nextReward = await DailyRewardModel.findOne({ day: 1 });
+      // If no previous claim, get the first reward
+      nextReward = await DailyRewardModel.findOne().sort({ _id: 1 });
     }
 
     res.json({
@@ -156,6 +162,7 @@ const getCurrentReward = async (req, res) => {
             prize: nextReward.prize,
             amount: nextReward.amount,
             day: nextReward.day,
+            id: nextReward._id, // Changed from 'day' to '_id'
           }
         : null,
       nextClaimAt,
