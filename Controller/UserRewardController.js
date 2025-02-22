@@ -88,9 +88,15 @@ const claimReward = async (req, res) => {
     await newClaim.save();
 
     // Update user coins and amount
-    const userUpdate = await UserRegisterModel.findByIdAndUpdate(userId, {
-      $inc: { coin: finalCoins, amount: finalAmount },
-    });
+    const userUpdate = await UserRegisterModel.findByIdAndUpdate(
+      userId,
+      {
+        $inc: { coin: finalCoins, amount: finalAmount },
+      },
+      { new: true }
+    );
+
+    console.log(userUpdate); // Log the updated user data
 
     if (!userUpdate) {
       return res
