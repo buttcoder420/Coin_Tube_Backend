@@ -231,9 +231,28 @@ const registerController = async (req, res) => {
   }
 };*/
 
+const getUserBalance = async (req, res) => {
+  try {
+    const userId = req.auth?._id; // Assuming user ID is stored in req.user after authentication
+
+    const user = await UserRegisterModel.findById(userId, "coin amount");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      coin: user.coin,
+      amount: user.amount,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   requireSign,
   loginController,
   registerController,
+  getUserBalance,
   //verifyEmailController,
 };
