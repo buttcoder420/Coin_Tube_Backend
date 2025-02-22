@@ -9,7 +9,9 @@ const dailyRewardSchema = new mongoose.Schema({
   },
   coins: { type: Number, required: true },
   amount: { type: Number, required: true },
+  isClaimed: { type: Boolean, default: false },
   claimedAt: { type: Date, default: Date.now },
+  isDouble: { type: String, enum: ["Yes", "No"], default: "No" },
 });
 
 module.exports = mongoose.model("Dailyreward", dailyRewardSchema);
