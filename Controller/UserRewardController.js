@@ -16,130 +16,141 @@ const requireSign = [
   },
 ];
 
-// Claim Daily Reward
+// **Claim Daily Reward**
 const claimReward = async (req, res) => {
   try {
-    const userId = req.auth._id; // Assuming user is authenticated
+    const userId = req.auth?._id;
+    const { isDouble } = req.body;
 
-    // Find user's last claimed reward
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ message: "Unauthorized: No user ID found" });
+    }
+
+    // Check if the user has already claimed in the last 24 hours
     const lastClaim = await UserDailyRewardModel.findOne({ userId }).sort({
       claimedAt: -1,
     });
 
-    let nextDay = 1; // Default to day 1
-
     if (lastClaim) {
-      const currentDate = new Date();
       const lastClaimDate = new Date(lastClaim.claimedAt);
+      const currentDate = new Date();
+      const hoursDiff = (currentDate - lastClaimDate) / (1000 * 3600);
 
-      // Check if the last claim was made today
-      const diffInTime = currentDate - lastClaimDate;
-      const diffInDays = Math.floor(diffInTime / (1000 * 3600 * 24));
-
-      if (diffInDays === 0) {
-        // Calculate the time remaining for the next reward
-        const nextClaimDate = new Date(lastClaimDate);
-        nextClaimDate.setDate(lastClaimDate.getDate() + 1); // Next reward can be claimed after 24 hours
-        nextClaimDate.setHours(0, 0, 0, 0); // Set to midnight
-
-        const timeRemaining = nextClaimDate - currentDate;
-
-        // Convert timeRemaining to hours, minutes, and seconds
-        const hours = Math.floor(
-          (timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-        );
-        const minutes = Math.floor(
-          (timeRemaining % (1000 * 60 * 60)) / (1000 * 60)
-        );
-        const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-
+      if (hoursDiff < 24) {
+        const nextClaimTime = new Date(lastClaim.claimedAt);
+        nextClaimTime.setHours(nextClaimTime.getHours() + 24);
         return res.status(400).json({
-          message: `You have already claimed today's reward. Next reward can be claimed in ${hours}h ${minutes}m ${seconds}s.`,
+          message: `You can claim again after ${nextClaimTime.toISOString()}`,
+          nextClaimAt: nextClaimTime,
         });
       }
+    }
 
-      // If last claim was yesterday, proceed with next day claim
-      if (diffInDays === 1) {
-        nextDay = parseInt(lastClaim.day) + 1;
-        if (nextDay > 7) nextDay = 1; // Reset to day 1 after day 7
-      } else if (diffInDays > 1) {
-        nextDay = 1; // Reset to day 1 if the user didn't claim yesterday
+    // Determine next reward
+    let rewardId = null;
+
+    if (lastClaim) {
+      const lastReward = await DailyRewardModel.findById(lastClaim.rewardId);
+      if (!lastReward) {
+        return res.status(404).json({ message: "Previous reward not found!" });
       }
-    }
-
-    // Find the reward for the next available day
-    let reward = await DailyRewardModel.findOne({
-      day: nextDay.toString(),
-    });
-
-    // If no reward is found, claim the first reward from DailyRewardModel
-    if (!reward) {
-      reward = await DailyRewardModel.findOne().sort({ day: 1 }); // Get the first available reward
-      if (!reward)
+      rewardId = lastReward._id;
+    } else {
+      const firstReward = await DailyRewardModel.findOne();
+      if (!firstReward) {
         return res.status(404).json({ message: "No rewards available!" });
+      }
+      rewardId = firstReward._id;
     }
 
-    // Save new claimed reward
+    const reward = await DailyRewardModel.findById(rewardId);
+    if (!reward) {
+      return res.status(404).json({ message: "No rewards available!" });
+    }
+
+    let finalCoins = isDouble ? reward.prize * 2 : reward.prize;
+    let finalAmount = reward.amount;
+    let isDoubleStatus = isDouble ? "Yes" : "No";
+
+    // Save claimed reward
     const newClaim = new UserDailyRewardModel({
       userId,
       rewardId: reward._id,
-      coins: parseInt(reward.prize),
-      amount: parseFloat(reward.amount),
-      day: nextDay, // Store the day
+      coins: finalCoins,
+      amount: finalAmount,
+      isClaimed: true,
+      isDouble: isDoubleStatus,
+      claimedAt: new Date(),
     });
+
     await newClaim.save();
 
-    // Update user's coins and amount
-    await UserRegisterModel.findByIdAndUpdate(userId, {
-      $inc: { coin: parseInt(reward.prize), amount: parseFloat(reward.amount) },
+    // Update user coins and amount
+    const userUpdate = await UserRegisterModel.findByIdAndUpdate(userId, {
+      $inc: { coin: finalCoins, amount: finalAmount },
     });
 
-    res.json({ message: "Reward claimed successfully!", reward: newClaim });
+    if (!userUpdate) {
+      return res
+        .status(400)
+        .json({ message: "User not found or update failed" });
+    }
+
+    // Calculate next claim time
+    let nextClaimAt = new Date();
+    nextClaimAt.setHours(nextClaimAt.getHours() + 24);
+
+    res.json({
+      message: "Reward claimed successfully!",
+      reward: {
+        coins: finalCoins,
+        amount: finalAmount,
+        isClaimed: true,
+        isDouble: isDoubleStatus,
+      },
+      nextClaimAt,
+    });
   } catch (error) {
-    console.error(error); // Added error logging for better debugging
+    console.error("Error claiming reward:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
+// **Get Current Reward**
 const getCurrentReward = async (req, res) => {
   try {
     const userId = req.auth._id;
 
-    // User ka last claimed reward find karo (latest entry)
     const lastClaim = await UserDailyRewardModel.findOne({ userId })
       .sort({ claimedAt: -1 })
-      .populate("rewardId"); // Jo reward claim hua tha, uski details bhi lao
+      .populate("rewardId");
 
     let nextReward = null;
+    let nextClaimAt = null;
+    let nextDay = 1;
 
     if (lastClaim) {
       const currentDate = new Date();
       const lastClaimDate = new Date(lastClaim.claimedAt);
-
-      // **Check karo ke last claim aur aaj ke beech 24 ghantay ka farq hai ya nahi**
       const diffInHours = (currentDate - lastClaimDate) / (1000 * 3600);
 
       if (diffInHours >= 24) {
-        // **Agar 24 hours guzar chuke hain, to next reward dhoondho**
-        nextReward = await DailyRewardModel.findOne({
-          _id: { $gt: lastClaim.rewardId }, // Next reward jo last claim ke baad ho
-        }).sort({ _id: 1 });
-
-        // **Agar koi next reward nahi mila, to cycle restart karo (Day 1 ka reward lo)**
-        if (!nextReward) {
-          nextReward = await DailyRewardModel.findOne().sort({ _id: 1 });
-        }
+        nextDay = lastClaim.rewardId.day + 1;
+        if (nextDay > 7) nextDay = 1;
+        nextReward = await DailyRewardModel.findOne({ day: nextDay });
       } else {
-        // **Agar 24 ghantay nahi huay, to last claimed reward hi dikhao**
         nextReward = lastClaim.rewardId;
+        nextClaimAt = new Date(lastClaim.claimedAt);
+        nextClaimAt.setHours(nextClaimAt.getHours() + 24);
       }
     } else {
-      // **Agar user ka koi bhi claim nahi mila, to Day 1 ka reward do**
-      nextReward = await DailyRewardModel.findOne().sort({ _id: 1 });
+      nextReward = await DailyRewardModel.findOne({ day: 1 });
     }
 
     res.json({
-      message: `Your next reward is ready.`,
+      message: "Your next reward is ready.",
       reward: nextReward
         ? {
             prize: nextReward.prize,
@@ -147,6 +158,7 @@ const getCurrentReward = async (req, res) => {
             day: nextReward.day,
           }
         : null,
+      nextClaimAt,
     });
   } catch (error) {
     console.error(error);
