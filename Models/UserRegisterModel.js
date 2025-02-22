@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema(
     referralCode: { type: String, unique: true, default: null },
     referralLink: { type: String, unique: true, default: null },
     referredBy: { type: String, default: null },
+    coin: { type: Number, default: 0 },
+    amount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
