@@ -233,9 +233,16 @@ const registerController = async (req, res) => {
 
 const getUserBalance = async (req, res) => {
   try {
-    const userId = req.auth?._id; // Assuming user ID is stored in req.user after authentication
+    const userId = req.auth?._id; // ✅ Ensure correct authentication middleware is passing user data
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ message: "Unauthorized: No user ID found" });
+    }
 
     const user = await UserRegisterModel.findById(userId, "coin amount");
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -245,6 +252,7 @@ const getUserBalance = async (req, res) => {
       amount: user.amount,
     });
   } catch (error) {
+    console.error("Server Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
